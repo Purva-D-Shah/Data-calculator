@@ -2,12 +2,6 @@ import streamlit as st
 import pandas as pd
 import io
 
-deadline = datetime(2025, 12, 20) 
-
-if datetime.now() > deadline:
-    st.error("⚠️ This tool's license has expired. Please contact the developer to renew access.")
-    st.stop() # This completely stops the rest of the code from running
-
 st.set_page_config(page_title="Meesho Profit Calculator", layout="centered")
 st.title("📊 Meesho Profit & Loss Reconciler")
 
@@ -187,4 +181,5 @@ if st.button("Calculate Profit"):
                 st.error(f"Critical Error: {e}")
 
                 st.write("Tip: Check if your CSV file is open in Excel. Close it and try again.")
+
 
