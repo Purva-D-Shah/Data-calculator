@@ -5,7 +5,7 @@ from io import BytesIO
 
 # --- Configuration ---
 st.set_page_config(
-    page_title="Meesho Data Processor (Profit/Loss Calculator)",
+    page_title="Meesho Profit/loss calculator",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -238,8 +238,8 @@ with col_left:
 # --- RIGHT COLUMN: Same Month & Next Month ---
 with col_right:
     st.markdown("**Payment & Ads Data**")
-    same_month_file = st.file_uploader("3. Upload same month file `same.xlsx`", type=['xlsx'])
-    next_month_file = st.file_uploader("4. Upload next month file `next.xlsx`", type=['xlsx'])
+    same_month_file = st.file_uploader("3. Upload same month payment file `same.xlsx`", type=['xlsx'])
+    next_month_file = st.file_uploader("4. Upload Next month payment file `next.xlsx`", type=['xlsx'])
 
 st.markdown("---")
 
@@ -263,7 +263,7 @@ if orders_file and same_month_file and next_month_file and cost_file:
                 
                 # --- VISUALS: Populate Top Container (Above Inputs) ---
                 with results_container:
-                    st.success("✅ Processing Complete! See metrics below and download link in Sidebar.")
+                    st.success("✅ Processing Complete! See metrics below.")
                     st.markdown("### 📈 Financial Summary")
                     
                     # Row 1: Key Metric (Profit Only)
@@ -285,11 +285,22 @@ if orders_file and same_month_file and next_month_file and cost_file:
                     with col6: st.metric("Next Month Ads", f"₹{stats['Next Month Ads Cost']:,.2f}")
                     with col7: st.metric("Misc Cost", f"₹{stats['Miscellaneous Cost']:,.2f}")
                     
+                    st.divider() 
+                    
+                    # --- DOWNLOAD BUTTON IN MAIN DASHBOARD (Below Metrics) ---
+                    st.download_button(
+                        label="⬇️ Download Excel Report",
+                        data=excel_data,
+                        file_name="Final_Processed_Order_Report.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True,
+                        type="primary" # Make it stand out
+                    )
                     st.divider() # Separator before inputs start
                 
                 st.balloons()
 
-                # --- DOWNLOAD: Move to Sidebar ---
+                # --- DOWNLOAD: Also in Sidebar ---
                 with st.sidebar:
                     st.header("Actions")
                     st.success("✅ Files Processed!")
@@ -305,4 +316,3 @@ if orders_file and same_month_file and next_month_file and cost_file:
                 st.error("Report generation failed due to a file processing error.")
 else:
     st.warning("Please upload all four files above to enable processing.")
-
