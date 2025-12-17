@@ -189,10 +189,11 @@ if orders_file and same_month_file and next_month_file and cost_file:
                     c5.metric("Exchange", stats['count_Exchange'])
                     c6.metric("Cancelled", stats['count_cancelled'])
                     c7.metric("Shipped", stats['count_Shipped'])
-                    c8.metric("Ready_to_ship", stats['count_Ready_to_ship'])
+                    c8.metric("Ready_to_ship", stats['count_ready_to_ship'])
                     
                     
                     st.divider()
                     
                     st.download_button("⬇️ Download Excel Report", data=excel_data, file_name="Final_Report.xlsx", use_container_width=True, type="primary")
                 st.balloons()
+
