@@ -80,7 +80,7 @@ def process_data(orders_file, same_month_file, next_month_file, cost_file, packa
     df_orders_final = pd.merge(df_orders_final, status_lookup, on='Sub Order No', how='left')
     df_orders_final.rename(columns={'Live Order Status': 'status'}, inplace=True)
 
-    # --- NEW: Status Counting Logic ---
+    # --- Status Counting Logic ---
     status_series = df_orders_final['status'].fillna('Unknown').str.strip()
     
     # --- COST LOGIC ---
@@ -113,7 +113,6 @@ def process_data(orders_file, same_month_file, next_month_file, cost_file, packa
         "Next Month Ads Cost": next_ads_sum,
         "Miscellaneous Cost": misc_cost_value,
         "Profit / Loss": profit_loss_value,
-        # New Status Stats
         "count_total": len(df_orders_final),
         "count_delivered": len(df_orders_final[status_series == 'Delivered']),
         "count_return": len(df_orders_final[status_series == 'Return']),
@@ -122,7 +121,6 @@ def process_data(orders_file, same_month_file, next_month_file, cost_file, packa
         "count_cancelled": len(df_orders_final[status_series == 'Cancelled']),
         "count_Shipped": len(df_orders_final[status_series == 'Shipped']),
         "count_ready_to_ship": len(df_orders_final[status_series == 'Ready_to_ship'])
-
     }
 
     # --- Write to Excel ---
@@ -131,7 +129,24 @@ def process_data(orders_file, same_month_file, next_month_file, cost_file, packa
         df_orders_final.to_excel(writer, sheet_name='orders.csv', index=False)
         summary_df = pd.DataFrame(list(stats.items()), columns=['Metric', 'Value'])
         summary_df.to_excel(writer, sheet_name='final sheet', index=False)
-        # (Other sheets omitted for brevity, same as your original)
+        
+        # --- NEW: Create Packaging Details Sheet ---
+        # Filter for specific statuses
+        pkg_filter = df_orders_final['status'].str.strip().isin(['Delivered', 'Return', 'Exchange'])
+        df_pkg = df_orders_final[pkg_filter][['Sub Order No', 'SKU', 'status', 'packaging cost']].copy()
+        
+        # Calculate total for the footer
+        pkg_sum = df_pkg['packaging cost'].sum()
+        
+        # Append a total row
+        total_row = pd.DataFrame([['', '', 'packaging cost(Deliver, Return & Exchange)', pkg_sum]], 
+                                 columns=['Sub Order No', 'SKU', 'status', 'packaging cost'])
+        df_pkg_final = pd.concat([df_pkg, total_row], ignore_index=True)
+        
+        # Write the new sheet
+        df_pkg_final.to_excel(writer, sheet_name='Packaging Details', index=False)
+        # --------------------------------------------
+
         df_same_sheet.to_excel(writer, sheet_name='same month', index=False)
         df_next_sheet.to_excel(writer, sheet_name='next month', index=False)
 
@@ -145,11 +160,11 @@ results_container = st.container()
 st.markdown("### 1. Upload & Settings")
 col_left, col_right = st.columns(2)
 with col_left:
-    orders_file = st.file_uploader("1. Upload orders file `orders.csv`", type=['csv'])
-    cost_file = st.file_uploader("2. Upload `cost` file", type=['csv', 'xlsx'])
+    orders_file = st.file_uploader("1. Upload orders file ", type=['csv'])
+    cost_file = st.file_uploader("2. Upload cost file", type=['csv', 'xlsx'])
 with col_right:
-    same_month_file = st.file_uploader("3. Upload same month payment file `same.xlsx`", type=['xlsx'])
-    next_month_file = st.file_uploader("4. Upload Next month payment file `next.xlsx`", type=['xlsx'])
+    same_month_file = st.file_uploader("3. Upload same month payment file ", type=['xlsx'])
+    next_month_file = st.file_uploader("4. Upload Next month payment file ", type=['xlsx'])
 
 col_set1, col_set2 = st.columns(2)
 with col_set1:
@@ -166,7 +181,6 @@ if orders_file and same_month_file and next_month_file and cost_file:
                 with results_container:
                     st.success("✅ Processing Complete!")
                     
-                    # Financial Row
                     st.markdown("### 📈 Financial Summary")
                     pl_val = stats['Profit / Loss']
                     st.metric("PROFIT / LOSS", f"₹{pl_val:,.2f}")
@@ -179,7 +193,6 @@ if orders_file and same_month_file and next_month_file and cost_file:
                     
                     st.divider()
 
-                    # --- NEW: Order Status Metrics Row ---
                     st.markdown("### 📦 Order Status Breakdown")
                     c1, c2, c3, c4, c5, c6, c7, c8 = st.columns(8)
                     c1.metric("Total Orders", stats['count_total'])
@@ -190,7 +203,6 @@ if orders_file and same_month_file and next_month_file and cost_file:
                     c6.metric("Cancelled", stats['count_cancelled'])
                     c7.metric("Shipped", stats['count_Shipped'])
                     c8.metric("Ready_to_ship", stats['count_ready_to_ship'])
-                    
                     
                     st.divider()
                     
