@@ -132,22 +132,32 @@ def process_data(orders_file, same_month_file, next_month_file, cost_file, packa
         summary_df = pd.DataFrame(list(stats.items()), columns=['Metric', 'Value'])
         summary_df.to_excel(writer, sheet_name='final sheet', index=False)
         
-        # --- NEW: Create total cost Sheet for Delivered, Return & Exchange ---
-        # Filter for specific statuses
+        # ---------------------------------------------------------------------
+        # NEW: Create total cost Sheet for Delivered, Return & Exchange
+        # ---------------------------------------------------------------------
+        # 1. Filter for specific statuses
         pkg_filter = df_orders_final['status'].str.strip().isin(['Delivered', 'Return', 'Exchange'])
         df_pkg = df_orders_final[pkg_filter][['Sub Order No', 'SKU', 'status', 'actual cost']].copy()
         
-        # Calculate total for the footer
+        # 2. Calculate sum
         pkg_sum = df_pkg['actual cost'].sum()
         
-        # Append a total row
-        total_row = pd.DataFrame([['', '', 'actual cost(Deliver, Return & Exchange)', pkg_sum]], 
-                                 columns=['Sub Order No', 'SKU', 'status', 'actual cost'])
-        df_pkg_final = pd.concat([df_pkg, total_row], ignore_index=True)
+        # 3. Create a Footer Row with the Sum
+        # We put 'GRAND TOTAL' in the 'status' column and the numeric sum in 'actual cost'
+        total_row_data = {
+            'Sub Order No': '',
+            'SKU': '',
+            'status': 'GRAND TOTAL',
+            'actual cost': pkg_sum
+        }
+        total_row_df = pd.DataFrame([total_row_data])
         
-        # FIX: Shortened sheet name to be under 31 characters
+        # 4. Append the footer row to the dataframe
+        df_pkg_final = pd.concat([df_pkg, total_row_df], ignore_index=True)
+        
+        # 5. Write to Excel (using shortened name < 31 chars)
         df_pkg_final.to_excel(writer, sheet_name='Cost (Del, Ret, Exc)', index=False)
-        # --------------------------------------------
+        # ---------------------------------------------------------------------
 
         df_same_sheet.to_excel(writer, sheet_name='same month', index=False)
         df_next_sheet.to_excel(writer, sheet_name='next month', index=False)
