@@ -18,6 +18,7 @@ def process_data(orders_file, same_month_file, next_month_file, cost_file, packa
         # --- B. Read Order Payments ---
         excel_cols = ["Sub Order No", "Live Order Status", "Final Settlement Amount"]
         
+        # Note: headers are 1 (row 2) based on your logic
         df_same = pd.read_excel(same_month_file, sheet_name='Order Payments', header=1, usecols='A,F,L')
         df_next = pd.read_excel(next_month_file, sheet_name='Order Payments', header=1, usecols='A,F,L')
 
@@ -28,6 +29,7 @@ def process_data(orders_file, same_month_file, next_month_file, cost_file, packa
             df_cost = pd.read_excel(cost_file)
 
         # --- D. Read Ads Cost ---
+        # Reset file pointers because we are reading the file again for a different sheet
         same_month_file.seek(0)
         next_month_file.seek(0)
 
@@ -143,8 +145,8 @@ def process_data(orders_file, same_month_file, next_month_file, cost_file, packa
                                  columns=['Sub Order No', 'SKU', 'status', 'actual cost'])
         df_pkg_final = pd.concat([df_pkg, total_row], ignore_index=True)
         
-        # Write the new sheet
-        df_pkg_final.to_excel(writer, sheet_name='Actual cost', index=False)
+        # FIX: Shortened sheet name to be under 31 characters
+        df_pkg_final.to_excel(writer, sheet_name='Cost (Del, Ret, Exc)', index=False)
         # --------------------------------------------
 
         df_same_sheet.to_excel(writer, sheet_name='same month', index=False)
@@ -208,8 +210,3 @@ if orders_file and same_month_file and next_month_file and cost_file:
                     
                     st.download_button("⬇️ Download Excel Report", data=excel_data, file_name="Final_Report.xlsx", use_container_width=True, type="primary")
                 st.balloons()
-
-
-
-
-
