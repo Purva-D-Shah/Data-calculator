@@ -76,7 +76,7 @@ def process_data(orders_file, same_month_file, next_month_file, cost_file, packa
     df_orders_final = pd.merge(df_orders_final, df_pivot_next[['Sub Order No', 'next month pay']], on='Sub Order No', how='left')
     df_orders_final['total'] = df_orders_final[['same month pay', 'next month pay']].sum(axis=1, skipna=True)
     
-    status_lookup = df_order_status[['Sub Order No', 'Live Order Status']].drop_duplicates(subset=['Sub Order No'], keep='first')
+    status_lookup = df_order_status[['Sub Order No', 'Live Order Status']].drop_duplicates(subset=['Sub Order No'], keep='last')
     df_orders_final = pd.merge(df_orders_final, status_lookup, on='Sub Order No', how='left')
     df_orders_final.rename(columns={'Live Order Status': 'status'}, inplace=True)
 
@@ -208,4 +208,5 @@ if orders_file and same_month_file and next_month_file and cost_file:
                     
                     st.download_button("⬇️ Download Excel Report", data=excel_data, file_name="Final_Report.xlsx", use_container_width=True, type="primary")
                 st.balloons()
+
 
