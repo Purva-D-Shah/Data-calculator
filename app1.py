@@ -10,35 +10,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- SECURITY: Password Authentication ---
-def check_password():
-    """Returns `True` if the user had a correct password."""
-
-    def password_entered():
-        """Checks whether a password entered by the user is correct."""
-        if st.session_state["username"] in st.secrets["passwords"] and \
-           st.session_state["password"] == st.secrets["passwords"][st.session_state["username"]]:
-            st.session_state["password_correct"] = True
-            del st.session_state["password"]  # Don't store password
-        else:
-            st.session_state["password_correct"] = False
-
-    if "password_correct" not in st.session_state:
-        # First run, show inputs
-        st.text_input("Username", key="username")
-        st.text_input("Password", type="password", on_change=password_entered, key="password")
-        return False
-    elif not st.session_state["password_correct"]:
-        # Password incorrect, show inputs + error
-        st.text_input("Username", key="username")
-        st.text_input("Password", type="password", on_change=password_entered, key="password")
-        st.error("😕 User not known or password incorrect")
-        return False
-    else:
-        # Password correct
-        return True
-
-# --- Main Processing Logic (Unchanged) ---
 def process_data(orders_file, same_month_file, next_month_file, cost_file, packaging_cost_value, misc_cost_value):
     try:
         # --- A. Read Orders ---
@@ -164,10 +135,15 @@ def process_data(orders_file, same_month_file, next_month_file, cost_file, packa
         # ---------------------------------------------------------------------
         # NEW: Create total cost Sheet for Delivered, Return & Exchange
         # ---------------------------------------------------------------------
+        # 1. Filter for specific statuses
         pkg_filter = df_orders_final['status'].str.strip().isin(['Delivered', 'Return', 'Exchange'])
         df_pkg = df_orders_final[pkg_filter][['Sub Order No', 'SKU', 'status', 'actual cost']].copy()
+        
+        # 2. Calculate sum
         pkg_sum = df_pkg['actual cost'].sum()
         
+        # 3. Create a Footer Row with the Sum
+        # We put 'GRAND TOTAL' in the 'status' column and the numeric sum in 'actual cost'
         total_row_data = {
             'Sub Order No': '',
             'SKU': '',
@@ -175,7 +151,11 @@ def process_data(orders_file, same_month_file, next_month_file, cost_file, packa
             'actual cost': pkg_sum
         }
         total_row_df = pd.DataFrame([total_row_data])
+        
+        # 4. Append the footer row to the dataframe
         df_pkg_final = pd.concat([df_pkg, total_row_df], ignore_index=True)
+        
+        # 5. Write to Excel (using shortened name < 31 chars)
         df_pkg_final.to_excel(writer, sheet_name='Cost (Del, Ret, Exc)', index=False)
         # ---------------------------------------------------------------------
 
@@ -185,59 +165,58 @@ def process_data(orders_file, same_month_file, next_month_file, cost_file, packa
     output.seek(0)
     return output, stats
 
-# --- Streamlit App Interface (GATED) ---
-if check_password():
-    st.title("📊 Dashboard Data Processor")
-    results_container = st.container()
+# --- Streamlit App Interface ---
+st.title("📊 Dashboard Data Processor")
+results_container = st.container()
 
-    st.markdown("### 1. Upload & Settings")
-    col_left, col_right = st.columns(2)
-    with col_left:
-        orders_file = st.file_uploader("1. Upload orders file ", type=['csv'])
-        cost_file = st.file_uploader("2. Upload cost file", type=['csv', 'xlsx'])
-    with col_right:
-        same_month_file = st.file_uploader("3. Upload same month payment file ", type=['xlsx'])
-        next_month_file = st.file_uploader("4. Upload Next month payment file ", type=['xlsx'])
+st.markdown("### 1. Upload & Settings")
+col_left, col_right = st.columns(2)
+with col_left:
+    orders_file = st.file_uploader("1. Upload orders file ", type=['csv'])
+    cost_file = st.file_uploader("2. Upload cost file", type=['csv', 'xlsx'])
+with col_right:
+    same_month_file = st.file_uploader("3. Upload same month payment file ", type=['xlsx'])
+    next_month_file = st.file_uploader("4. Upload Next month payment file ", type=['xlsx'])
 
-    col_set1, col_set2 = st.columns(2)
-    with col_set1:
-        pack_cost = st.number_input("Packaging Cost (per record)", value=5.0, step=0.5)
-    with col_set2:
-        misc_cost = st.number_input("Miscellaneous Cost", value=0.0, step=100.0)
+col_set1, col_set2 = st.columns(2)
+with col_set1:
+    pack_cost = st.number_input("Packaging Cost (per record)", value=5.0, step=0.5)
+with col_set2:
+    misc_cost = st.number_input("Miscellaneous Cost", value=0.0, step=100.0)
 
-    if orders_file and same_month_file and next_month_file and cost_file:
-        if st.button("🚀 Process Data and Generate Report", type="primary"):
-            with st.spinner("Processing data..."):
-                excel_data, stats = process_data(orders_file, same_month_file, next_month_file, cost_file, pack_cost, misc_cost)
-                
-                if excel_data and stats:
-                    with results_container:
-                        st.success("✅ Processing Complete!")
-                        
-                        st.markdown("### 📈 Financial Summary")
-                        pl_val = stats['Profit / Loss']
-                        st.metric("PROFIT / LOSS", f"₹{pl_val:,.2f}")
-                        
-                        col1, col2, col3, col4 = st.columns(4)
-                        col1.metric("Total Payments", f"₹{stats['Total Payments']:,.2f}")
-                        col2.metric("Actual Cost", f"₹{stats['Total Actual Cost']:,.2f}")
-                        col3.metric("Packaging", f"₹{stats['Total Packaging Cost']:,.2f}")
-                        col4.metric("Ads (Same Month)", f"₹{stats['Same Month Ads Cost']:,.2f}")
-                        
-                        st.divider()
+if orders_file and same_month_file and next_month_file and cost_file:
+    if st.button("🚀 Process Data and Generate Report", type="primary"):
+        with st.spinner("Processing data..."):
+            excel_data, stats = process_data(orders_file, same_month_file, next_month_file, cost_file, pack_cost, misc_cost)
+            
+            if excel_data and stats:
+                with results_container:
+                    st.success("✅ Processing Complete!")
+                    
+                    st.markdown("### 📈 Financial Summary")
+                    pl_val = stats['Profit / Loss']
+                    st.metric("PROFIT / LOSS", f"₹{pl_val:,.2f}")
+                    
+                    col1, col2, col3, col4 = st.columns(4)
+                    col1.metric("Total Payments", f"₹{stats['Total Payments']:,.2f}")
+                    col2.metric("Actual Cost", f"₹{stats['Total Actual Cost']:,.2f}")
+                    col3.metric("Packaging", f"₹{stats['Total Packaging Cost']:,.2f}")
+                    col4.metric("Ads (Same Month)", f"₹{stats['Same Month Ads Cost']:,.2f}")
+                    
+                    st.divider()
 
-                        st.markdown("### 📦 Order Status Breakdown")
-                        c1, c2, c3, c4, c5, c6, c7, c8 = st.columns(8)
-                        c1.metric("Total Orders", stats['count_total'])
-                        c2.metric("Delivered", stats['count_delivered'])
-                        c3.metric("Return", stats['count_return'])
-                        c4.metric("RTO", stats['count_rto'])
-                        c5.metric("Exchange", stats['count_Exchange'])
-                        c6.metric("Cancelled", stats['count_cancelled'])
-                        c7.metric("Shipped", stats['count_Shipped'])
-                        c8.metric("Ready_to_ship", stats['count_ready_to_ship'])
-                        
-                        st.divider()
-                        
-                        st.download_button("⬇️ Download Excel Report", data=excel_data, file_name="Final_Report.xlsx", use_container_width=True, type="primary")
-                    st.balloons()
+                    st.markdown("### 📦 Order Status Breakdown")
+                    c1, c2, c3, c4, c5, c6, c7, c8 = st.columns(8)
+                    c1.metric("Total Orders", stats['count_total'])
+                    c2.metric("Delivered", stats['count_delivered'])
+                    c3.metric("Return", stats['count_return'])
+                    c4.metric("RTO", stats['count_rto'])
+                    c5.metric("Exchange", stats['count_Exchange'])
+                    c6.metric("Cancelled", stats['count_cancelled'])
+                    c7.metric("Shipped", stats['count_Shipped'])
+                    c8.metric("Ready_to_ship", stats['count_ready_to_ship'])
+                    
+                    st.divider()
+                    
+                    st.download_button("⬇️ Download Excel Report", data=excel_data, file_name="Final_Report.xlsx", use_container_width=True, type="primary")
+                st.balloons()
